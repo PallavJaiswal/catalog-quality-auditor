@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAi } from "@/lib/ai";
+import { consume, getRemaining, limitReachedResponse } from "@/lib/rateLimit";
 
 interface ListingInput {
   title: string;
@@ -38,6 +39,10 @@ If nothing is risky, respond with {"flags": []}. Do not invent issues that aren'
 }
 
 export async function POST(request: NextRequest) {
+  if (getRemaining(request, "compliance") <= 0) {
+    return limitReachedResponse();
+  }
+
   try {
     const { title, bullets, description, category } =
       await request.json();
@@ -76,7 +81,9 @@ export async function POST(request: NextRequest) {
           : "low",
     }));
 
-    return NextResponse.json({ flags });
+    const response = NextResponse.json({ flags });
+    consume(request, response, "compliance");
+    return response;
   } catch (error) {
     console.error("Compliance scan failed:", error);
     return NextResponse.json(

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAi } from "@/lib/ai";
+import { consume, getRemaining, limitReachedResponse } from "@/lib/rateLimit";
 
 interface ListingInput {
   title: string;
@@ -40,6 +41,10 @@ Respond with ONLY valid JSON in this exact shape, no other text:
 }
 
 export async function POST(request: NextRequest) {
+  if (getRemaining(request, "rewrite") <= 0) {
+    return limitReachedResponse();
+  }
+
   try {
     const { title, bullets, description, category, brand } =
       await request.json();
@@ -78,11 +83,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       title: parsed.title,
       bullets: parsed.bullets,
       description: parsed.description ?? null,
     });
+    consume(request, response, "rewrite");
+    return response;
   } catch (error) {
     console.error("Rewrite request failed:", error);
     return NextResponse.json(

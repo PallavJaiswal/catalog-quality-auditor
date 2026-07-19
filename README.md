@@ -28,7 +28,7 @@ Rather than just describe that I understand catalog quality problems, this tool 
 - **Compliance risk scanner** — flags marketplace-policy-risk language (unsubstantiated health claims, guarantee language, embedded contact info/URLs, restricted-category wording) before a listing goes live
 - **AI duplicate verdict** — for borderline duplicate pairs, asks the model to call it: same listing duplicated, a legitimate size/color variant, or genuinely different products
 - **AI executive summary** — a stakeholder-ready, plain-English writeup of an audit run, referencing real SKUs and numbers
-- **Per-visitor AI usage budget** — every AI feature draws from one shared, browser-local cap so a public demo visitor can't run up unlimited API calls
+- **Per-visitor AI usage limit** — each AI feature is capped at 2 free uses per visitor, enforced server-side via a signed cookie (not just a client-side check), so a public demo visitor can't run up unlimited API calls
 - **Prioritized fix list** — sorted by risk level, then issue count, mirroring real marketplace listing-quality workflows
 - **Sortable, searchable dashboard** with risk filters
 - **Report history** — last 10 audit runs saved automatically
@@ -61,7 +61,7 @@ A few choices are worth explaining, because they were deliberate trade-offs, not
 - **A confirmation step on every upload, not just when detection fails.** Auto-detection is a convenience, not a guarantee — showing a human-editable mapping every time (pre-filled with the best guess) catches errors before they silently corrupt a report.
 - **AI provider is configurable, not hardcoded to one vendor.** Locally, it uses Claude for testing and comparison. The public deployment uses Groq instead — a free-tier provider — specifically so a stranger clicking around the live demo can't run up a real bill. Same code, different environment settings.
 - **Two-tier duplicate detection instead of one threshold.** A single similarity cutoff forces a bad trade-off: too strict misses real duplicates, too loose floods the list with false positives. Splitting it into "hard duplicate" (80%+) and "possible duplicate" (50–79%, flagged but not asserted) avoids crying wolf while still surfacing borderline cases for a human to judge.
-- **A shared AI usage budget instead of a login wall.** The public demo needed some abuse protection without forcing a sign-up flow just to try the tool. A single per-visitor, browser-local budget shared across every AI feature (rewrite, bulk rewrite, compliance scan, duplicate verdict, executive summary) stops one visitor from running up real API cost, without adding an account system this project doesn't otherwise need.
+- **A signed, server-side usage cookie instead of a login wall.** The public demo needed real abuse protection without forcing a sign-up flow just to try the tool. Each AI feature (rewrite, bulk rewrite, compliance scan, duplicate verdict, executive summary, generate-from-link) is capped at 2 free uses per visitor, tracked in an httpOnly cookie that the API routes themselves check and update — not a client-side localStorage flag, which a visitor could bypass just by calling the API directly or clearing browser storage. The cookie is HMAC-signed so the count can't be edited by hand in devtools either.
 - **SSRF-guarded scraping for the "generate from link" feature.** Fetching an arbitrary user-submitted URL server-side is a classic SSRF vector. The fetch validates protocol, blocks local/internal hostnames, resolves DNS and rejects private-IP results (including on each redirect hop, since a public hostname can still redirect to an internal address), and caps response size and redirect count.
 - **No database for the MVP.** localStorage plus React Context proved the concept end-to-end without the overhead of hosting a database — a "come back to later" decision, not a permanent one.
 
@@ -82,6 +82,7 @@ You'll need a `.env.local` file with:
 ANTHROPIC_API_KEY=your_key      # for local testing
 GROQ_API_KEY=your_key           # for the public-deployment code path
 AI_PROVIDER=claude              # omit or set to "groq" to test that path instead
+USAGE_COOKIE_SECRET=any_random_string   # optional locally; set a real random value in production (e.g. Vercel env vars) to sign the per-visitor AI usage cookie
 ```
 
 Then open `http://localhost:3000` and either upload a catalog file or use the built-in sample data generator to try it instantly.

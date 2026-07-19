@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { callAi } from "@/lib/ai";
 import { fetchProductPage, ScrapeError } from "@/lib/scrape";
 import { findVerbatimOverlap } from "@/lib/originality";
+import { consume, getRemaining, limitReachedResponse } from "@/lib/rateLimit";
 
 type Field = "title" | "bullets" | "description";
 const ALL_FIELDS: Field[] = ["title", "bullets", "description"];
@@ -37,6 +38,10 @@ Respond with ONLY valid JSON in this exact shape, no other text:
 }
 
 export async function POST(request: NextRequest) {
+  if (getRemaining(request, "generate-from-link") <= 0) {
+    return limitReachedResponse();
+  }
+
   try {
     const {
       url,
@@ -104,13 +109,15 @@ export async function POST(request: NextRequest) {
       overlapWarnings.push(...overlaps);
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       title: parsed.title ?? null,
       bullets: parsed.bullets ?? null,
       description: parsed.description ?? null,
       sourcePageTitle: page.title,
       overlapWarnings: [...new Set(overlapWarnings)].slice(0, 5),
     });
+    consume(request, response, "generate-from-link");
+    return response;
   } catch (error) {
     console.error("Generate-from-link request failed:", error);
     return NextResponse.json(

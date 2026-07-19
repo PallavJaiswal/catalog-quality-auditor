@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAi } from "@/lib/ai";
+import { consume, getRemaining, limitReachedResponse } from "@/lib/rateLimit";
 
 interface SummaryInput {
   filename: string;
@@ -55,6 +56,10 @@ Write a 4-6 sentence executive summary as plain text — this gets displayed ver
 }
 
 export async function POST(request: NextRequest) {
+  if (getRemaining(request, "summary") <= 0) {
+    return limitReachedResponse();
+  }
+
   try {
     const input = (await request.json()) as SummaryInput;
 
@@ -68,7 +73,9 @@ export async function POST(request: NextRequest) {
     const prompt = buildPrompt(input);
     const summary = await callAi(prompt);
 
-    return NextResponse.json({ summary });
+    const response = NextResponse.json({ summary });
+    consume(request, response, "summary");
+    return response;
   } catch (error) {
     console.error("Summary request failed:", error);
     return NextResponse.json(

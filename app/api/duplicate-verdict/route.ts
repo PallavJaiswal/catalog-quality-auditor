@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callAi } from "@/lib/ai";
+import { consume, getRemaining, limitReachedResponse } from "@/lib/rateLimit";
 
 interface ListingSide {
   sku: string;
@@ -28,6 +29,10 @@ Use "same-listing" only if these look like the exact same sellable item duplicat
 }
 
 export async function POST(request: NextRequest) {
+  if (getRemaining(request, "duplicate-verdict") <= 0) {
+    return limitReachedResponse();
+  }
+
   try {
     const { a, b } = await request.json();
 
@@ -60,10 +65,12 @@ export async function POST(request: NextRequest) {
         ? parsed.verdict
         : "likely-variant";
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       verdict,
       reason: String(parsed.reason ?? ""),
     });
+    consume(request, response, "duplicate-verdict");
+    return response;
   } catch (error) {
     console.error("Duplicate verdict request failed:", error);
     return NextResponse.json(

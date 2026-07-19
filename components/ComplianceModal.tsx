@@ -3,10 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { AuditedListing, PolicyRiskFlag } from "@/lib/types";
 import { useAppData } from "@/lib/store";
-import {
-  hasAiActionsRemaining,
-  recordAiAction,
-} from "@/lib/aiUsage";
 
 interface ComplianceModalProps {
   listing: AuditedListing;
@@ -41,12 +37,6 @@ export function ComplianceModal({
   async function scan() {
     const requestId = ++requestIdRef.current;
 
-    if (!hasAiActionsRemaining()) {
-      setLimitReached(true);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -62,13 +52,18 @@ export function ComplianceModal({
       });
 
       const data = await res.json();
+
+      if (res.status === 429) {
+        if (requestIdRef.current === requestId) setLimitReached(true);
+        return;
+      }
+
       if (!res.ok) {
         throw new Error(data.error || "Something went wrong.");
       }
 
       if (requestIdRef.current === requestId) {
         setFlags(data.flags);
-        recordAiAction();
         updateListing(listing.id, {
           policyRisk: {
             flags: data.flags,

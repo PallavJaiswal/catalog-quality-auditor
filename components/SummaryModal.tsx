@@ -2,10 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { AuditResult } from "@/lib/types";
-import {
-  hasAiActionsRemaining,
-  recordAiAction,
-} from "@/lib/aiUsage";
 
 interface SummaryModalProps {
   auditResult: AuditResult;
@@ -37,12 +33,6 @@ export function SummaryModal({
 
   async function generate() {
     const requestId = ++requestIdRef.current;
-
-    if (!hasAiActionsRemaining()) {
-      setLimitReached(true);
-      setLoading(false);
-      return;
-    }
 
     setLoading(true);
     setError(null);
@@ -93,13 +83,18 @@ export function SummaryModal({
       });
 
       const data = await res.json();
+
+      if (res.status === 429) {
+        if (requestIdRef.current === requestId) setLimitReached(true);
+        return;
+      }
+
       if (!res.ok) {
         throw new Error(data.error || "Something went wrong.");
       }
 
       if (requestIdRef.current === requestId) {
         setSummary(data.summary);
-        recordAiAction();
       }
     } catch (err) {
       if (requestIdRef.current === requestId) {

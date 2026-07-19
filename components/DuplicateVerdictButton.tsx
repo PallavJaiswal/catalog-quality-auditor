@@ -3,10 +3,6 @@
 import { useState } from "react";
 import type { AuditedListing, DuplicateVerdictResult } from "@/lib/types";
 import { useAppData } from "@/lib/store";
-import {
-  hasAiActionsRemaining,
-  recordAiAction,
-} from "@/lib/aiUsage";
 
 interface DuplicateVerdictButtonProps {
   listing: AuditedListing;
@@ -36,10 +32,6 @@ export function DuplicateVerdictButton({
 
   async function askAi() {
     if (!comparedTo) return;
-    if (!hasAiActionsRemaining()) {
-      setLimitReached(true);
-      return;
-    }
 
     setLoading(true);
     setError(null);
@@ -64,11 +56,16 @@ export function DuplicateVerdictButton({
       });
 
       const data = await res.json();
+
+      if (res.status === 429) {
+        setLimitReached(true);
+        return;
+      }
+
       if (!res.ok) {
         throw new Error(data.error || "Something went wrong.");
       }
 
-      recordAiAction();
       updateListing(listing.id, {
         duplicateVerdict: {
           verdict: data.verdict,

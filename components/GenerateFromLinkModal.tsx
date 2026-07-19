@@ -3,10 +3,6 @@
 import { useState } from "react";
 import type { AuditedListing } from "@/lib/types";
 import { useAppData } from "@/lib/store";
-import {
-  hasAiActionsRemaining,
-  recordAiAction,
-} from "@/lib/aiUsage";
 
 interface GenerateFromLinkModalProps {
   listing: AuditedListing;
@@ -35,11 +31,6 @@ export function GenerateFromLinkModal({
   const [copied, setCopied] = useState<Field | null>(null);
 
   async function generate(fields: Field[], key: Field | "all") {
-    if (!hasAiActionsRemaining()) {
-      setLimitReached(true);
-      return;
-    }
-
     setLoading(key);
     setError(null);
     try {
@@ -56,11 +47,16 @@ export function GenerateFromLinkModal({
       });
 
       const data = await res.json();
+
+      if (res.status === 429) {
+        setLimitReached(true);
+        return;
+      }
+
       if (!res.ok) {
         throw new Error(data.error || "Something went wrong.");
       }
 
-      recordAiAction();
       setResult((prev) => ({
         title: data.title ?? prev?.title ?? null,
         bullets: data.bullets ?? prev?.bullets ?? null,

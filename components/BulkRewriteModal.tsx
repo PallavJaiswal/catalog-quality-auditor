@@ -4,10 +4,6 @@ import { useState } from "react";
 import Papa from "papaparse";
 import type { AuditedListing } from "@/lib/types";
 import { useAppData } from "@/lib/store";
-import {
-  getAiActionsRemaining,
-  recordAiAction,
-} from "@/lib/aiUsage";
 
 interface BulkRewriteModalProps {
   candidates: AuditedListing[];
@@ -23,6 +19,9 @@ interface QueueItem {
   error?: string;
 }
 
+const LIMIT_MESSAGE =
+  "Demo limit reached — this feature is capped to 2 free uses per visitor.";
+
 async function rewriteOne(listing: AuditedListing) {
   const res = await fetch("/api/rewrite", {
     method: "POST",
@@ -36,6 +35,9 @@ async function rewriteOne(listing: AuditedListing) {
     }),
   });
   const data = await res.json();
+  if (res.status === 429) {
+    throw new Error(LIMIT_MESSAGE);
+  }
   if (!res.ok) throw new Error(data.error || "Something went wrong.");
   return data as {
     title: string;
@@ -49,20 +51,19 @@ export function BulkRewriteModal({
   onClose,
 }: BulkRewriteModalProps) {
   const { updateListing } = useAppData();
-  const budget = getAiActionsRemaining();
-  const capped = candidates.slice(0, Math.max(budget, 0));
-  const skippedCount = candidates.length - capped.length;
 
   const [items, setItems] = useState<QueueItem[]>(
-    capped.map((listing) => ({ listing, status: "pending" }))
+    candidates.map((listing) => ({ listing, status: "pending" }))
   );
   const [running, setRunning] = useState(false);
   const [started, setStarted] = useState(false);
+  const [limitHit, setLimitHit] = useState(false);
 
   const doneCount = items.filter((i) => i.status === "done").length;
   const errorCount = items.filter((i) => i.status === "error").length;
+  const skippedCount = items.filter((i) => i.status === "skipped").length;
   const finished =
-    started && doneCount + errorCount === items.length;
+    started && doneCount + errorCount + skippedCount === items.length;
 
   async function start() {
     setStarted(true);
@@ -77,7 +78,6 @@ export function BulkRewriteModal({
 
       try {
         const result = await rewriteOne(items[i].listing);
-        recordAiAction();
         updateListing(items[i].listing.id, {
           aiRewriteTitle: result.title,
           aiRewriteBullets: result.bullets,
@@ -97,20 +97,29 @@ export function BulkRewriteModal({
           )
         );
       } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Something went wrong.";
+        const hitLimit = message === LIMIT_MESSAGE;
+
         setItems((prev) =>
-          prev.map((it, idx) =>
-            idx === i
-              ? {
-                  ...it,
-                  status: "error",
-                  error:
-                    err instanceof Error
-                      ? err.message
-                      : "Something went wrong.",
-                }
-              : it
-          )
+          prev.map((it, idx) => {
+            if (idx === i) {
+              return { ...it, status: "error", error: message };
+            }
+            // Once the demo limit is hit, every remaining request
+            // would fail the same way — mark the rest skipped
+            // instead of burning a round trip on each.
+            if (hitLimit && idx > i && it.status === "pending") {
+              return { ...it, status: "skipped", error: LIMIT_MESSAGE };
+            }
+            return it;
+          })
         );
+
+        if (hitLimit) {
+          setLimitHit(true);
+          break;
+        }
       }
     }
 
@@ -162,10 +171,8 @@ export function BulkRewriteModal({
               Bulk AI Rewrite
             </h3>
             <p className="text-text-muted text-xs mt-0.5">
-              {items.length} listing{items.length === 1 ? "" : "s"}{" "}
-              queued
-              {skippedCount > 0 &&
-                ` · ${skippedCount} more skipped — demo AI budget covers ${budget} action${budget === 1 ? "" : "s"} per visitor`}
+              {items.length} listing{items.length === 1 ? "" : "s"} queued
+              {" · this demo allows 2 free rewrites per visitor"}
             </p>
           </div>
           <button
@@ -181,9 +188,7 @@ export function BulkRewriteModal({
         <div className="px-5 py-5 flex flex-col gap-4">
           {items.length === 0 && (
             <p className="text-sm text-text-muted">
-              No AI budget left for this visitor — try the single
-              &quot;Suggest Rewrite&quot; button once it resets, or
-              come back later.
+              No flagged listings to rewrite.
             </p>
           )}
 
@@ -205,9 +210,16 @@ export function BulkRewriteModal({
           {started && (
             <>
               <p className="text-xs text-text-muted">
-                {doneCount + errorCount} of {items.length} processed
+                {doneCount + errorCount + skippedCount} of {items.length}{" "}
+                processed
                 {running && " — working…"}
               </p>
+
+              {limitHit && (
+                <p className="text-xs" style={{ color: "var(--warning)" }}>
+                  {LIMIT_MESSAGE} The rest of the queue was skipped.
+                </p>
+              )}
 
               <div className="flex flex-col gap-2">
                 {items.map((item) => (
@@ -227,10 +239,16 @@ export function BulkRewriteModal({
                         {item.title}
                       </p>
                     )}
-                    {item.status === "error" && (
+                    {(item.status === "error" ||
+                      item.status === "skipped") && (
                       <p
                         className="text-xs mt-1.5"
-                        style={{ color: "var(--negative)" }}
+                        style={{
+                          color:
+                            item.status === "error"
+                              ? "var(--negative)"
+                              : "var(--text-muted)",
+                        }}
                       >
                         {item.error}
                       </p>

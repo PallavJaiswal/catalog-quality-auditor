@@ -3,10 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { AuditedListing } from "@/lib/types";
 import { useAppData } from "@/lib/store";
-import {
-  hasAiActionsRemaining,
-  recordAiAction,
-} from "@/lib/aiUsage";
 
 interface RewriteModalProps {
   listing: AuditedListing;
@@ -47,12 +43,6 @@ export function RewriteModal({ listing, onClose }: RewriteModalProps) {
   async function generate() {
     const requestId = ++requestIdRef.current;
 
-    if (!hasAiActionsRemaining()) {
-      setLimitReached(true);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
@@ -70,6 +60,11 @@ export function RewriteModal({ listing, onClose }: RewriteModalProps) {
 
       const data = await res.json();
 
+      if (res.status === 429) {
+        if (requestIdRef.current === requestId) setLimitReached(true);
+        return;
+      }
+
       if (!res.ok) {
         throw new Error(data.error || "Something went wrong.");
       }
@@ -80,7 +75,6 @@ export function RewriteModal({ listing, onClose }: RewriteModalProps) {
           bullets: data.bullets,
           description: data.description ?? null,
         });
-        recordAiAction();
         updateListing(listing.id, {
           aiRewriteTitle: data.title,
           aiRewriteBullets: data.bullets,
