@@ -9,8 +9,15 @@ const MIN_IMAGE_COUNT  = 3;     // images
 const MIN_PRICE        = 0.01;  // must have a real price
 
 // ─── Main validation function ────────────────────────────────
-// Takes one raw row, returns a fully audited listing.
-export function validateListing(row: RawCatalogRow): AuditedListing {
+// Takes one raw row, returns a fully audited listing. `rowId` is
+// this row's position in the uploaded file — used as a stable
+// identity for per-row actions (AI rewrite, compliance scan), since
+// the SKU itself isn't guaranteed unique (that's exactly the
+// skuCollision check below).
+export function validateListing(
+  row: RawCatalogRow,
+  rowId: number
+): AuditedListing {
   const missingFields: string[] = [];
 
   // --- SKU check ---
@@ -69,6 +76,8 @@ export function validateListing(row: RawCatalogRow): AuditedListing {
     : "high";
 
   return {
+    id: String(rowId),
+
     // Original fields — converted to correct types
     sku:         row.sku?.trim() ?? "",
     title:       row.title?.trim() ?? "",
@@ -78,6 +87,8 @@ export function validateListing(row: RawCatalogRow): AuditedListing {
     brand:       row.brand?.trim() ?? "Unknown",
     imageCount,
     price:       isNaN(price) ? 0 : price,
+    parentSku:   row.parent_sku?.trim() ?? "",
+    productUrl:  row.product_url?.trim() ?? "",
 
     // Audit results
     missingFields,
@@ -89,9 +100,13 @@ export function validateListing(row: RawCatalogRow): AuditedListing {
     possibleDuplicate: false,
     possibleDuplicateOf: null,
     similarityScore:   null,
+    skuCollision:      false,
     seoScore:          null,
     aiRewriteTitle:    null,
     aiRewriteBullets:  null,
+    aiRewriteDescription: null,
+    policyRisk:        null,
+    duplicateVerdict:  null,
   };
 }
 
@@ -100,7 +115,7 @@ export function validateListing(row: RawCatalogRow): AuditedListing {
 export function validateAllListings(
   rows: RawCatalogRow[]
 ): AuditedListing[] {
-  return rows.map((row) => validateListing(row));
+  return rows.map((row, i) => validateListing(row, i));
 }
 
 // ─── Summary counts ──────────────────────────────────────────

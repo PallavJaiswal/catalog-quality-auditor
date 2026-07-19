@@ -46,6 +46,7 @@ export function exportAuditToExcel(result: AuditResult) {
     "SEO Score":      l.seoScore ?? "",
     "Risk Level":     l.complianceRisk,
     "Issues Found":   l.missingFields.join(", ") || "None",
+    "Duplicate SKU":  l.skuCollision ? "Yes" : "No",
     "Is Duplicate":   l.isDuplicate ? "Yes" : "No",
     "Duplicate Of":   l.duplicateOf ?? "",
     "Possible Dup":   l.possibleDuplicate ? "Yes" : "No",
@@ -64,6 +65,7 @@ export function exportAuditToExcel(result: AuditResult) {
     { wch: 10 }, // SEO Score
     { wch: 10 }, // Risk
     { wch: 40 }, // Issues
+    { wch: 12 }, // Duplicate SKU
     { wch: 12 }, // Is Duplicate
     { wch: 12 }, // Duplicate Of
     { wch: 12 }, // Possible Dup
@@ -89,6 +91,7 @@ export function exportAuditToExcel(result: AuditResult) {
   // ── Tab 4: Duplicates ────────────────────────────────────
   const duplicates = fixListRows.filter(
     (r) =>
+      r["Duplicate SKU"] === "Yes" ||
       r["Is Duplicate"] === "Yes" ||
       r["Possible Dup"] === "Yes"
   );

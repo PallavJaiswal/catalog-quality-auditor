@@ -48,6 +48,15 @@ interface AppContextValue {
     filename: string
   ) => Promise<void>;
 
+  // Patches one listing in place (by its stable row id, not SKU —
+  // SKUs aren't guaranteed unique). Used to save AI results back
+  // into the audit: an applied rewrite, a compliance scan, a
+  // duplicate verdict.
+  updateListing: (
+    id: string,
+    patch: Partial<AuditedListing>
+  ) => void;
+
   // Called to clear everything and start over
   reset: () => void;
 }
@@ -94,8 +103,14 @@ export function AppProvider({
         // ── Stage 2: Find duplicates ───────────────────────
         setStage("duplicates");
         await pause();
-        const { detectDuplicates } = await import("./duplicates");
+        const {
+          detectDuplicates,
+          detectSkuCollisions,
+          reconcileVariationParentPricing,
+        } = await import("./duplicates");
+        listings = reconcileVariationParentPricing(listings);
         listings = detectDuplicates(listings);
+        listings = detectSkuCollisions(listings);
 
         // ── Stage 3: Score listings ────────────────────────
         setStage("scoring");
@@ -111,7 +126,7 @@ export function AppProvider({
         ).length;
 
         const duplicatesCount = listings.filter(
-          (l) => l.isDuplicate
+          (l) => l.isDuplicate || l.skuCollision
         ).length;
 
         const highRiskCount = listings.filter(
@@ -181,9 +196,31 @@ export function AppProvider({
     []
   );
 
+  const updateListing = useCallback(
+    (id: string, patch: Partial<AuditedListing>) => {
+      setAuditResult((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          listings: prev.listings.map((l) =>
+            l.id === id ? { ...l, ...patch } : l
+          ),
+        };
+      });
+    },
+    []
+  );
+
   return (
     <AppContext.Provider
-      value={{ auditResult, stage, error, runAudit, reset }}
+      value={{
+        auditResult,
+        stage,
+        error,
+        runAudit,
+        updateListing,
+        reset,
+      }}
     >
       {children}
     </AppContext.Provider>

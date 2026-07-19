@@ -12,9 +12,18 @@ interface ColumnMappingModalProps {
 
 // Single-value fields — the user picks exactly one column each.
 const SINGLE_FIELDS: {
-  key: "sku" | "title" | "description" | "category" | "brand" | "price";
+  key:
+    | "sku"
+    | "title"
+    | "description"
+    | "category"
+    | "brand"
+    | "price"
+    | "parent_sku"
+    | "product_url";
   label: string;
   required?: boolean;
+  hint?: string;
 }[] = [
   { key: "sku", label: "SKU", required: true },
   { key: "title", label: "Title", required: true },
@@ -22,6 +31,22 @@ const SINGLE_FIELDS: {
   { key: "category", label: "Category" },
   { key: "price", label: "Price" },
   { key: "description", label: "Description" },
+  {
+    key: "parent_sku",
+    label: "Parent SKU",
+    hint:
+      "Only if your file groups color/size variants under a parent " +
+      "listing (e.g. Amazon's parent_sku). Leave unmapped otherwise " +
+      "— siblings will be correctly compared as standalone listings.",
+  },
+  {
+    key: "product_url",
+    label: "Product Link",
+    hint:
+      "Optional — a link to the manufacturer's page or any other " +
+      "source page for this product. When mapped, you can generate " +
+      "title/bullets/description grounded in that page's real content.",
+  },
 ];
 
 // Multi-value fields — real files often spread these across
@@ -103,6 +128,11 @@ export function ColumnMappingModal({
                   <span style={{ color: "var(--negative)" }}>*</span>
                 )}
               </label>
+              {field.hint && (
+                <p className="text-xs text-text-muted -mt-1">
+                  {field.hint}
+                </p>
+              )}
               <select
                 value={mapping[field.key]}
                 onChange={(e) => setSingle(field.key, e.target.value)}

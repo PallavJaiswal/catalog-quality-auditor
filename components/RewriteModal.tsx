@@ -2,6 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { AuditedListing } from "@/lib/types";
+import { useAppData } from "@/lib/store";
+import {
+  hasAiActionsRemaining,
+  recordAiAction,
+} from "@/lib/aiUsage";
 
 interface RewriteModalProps {
   listing: AuditedListing;
@@ -11,27 +16,38 @@ interface RewriteModalProps {
 interface RewriteResult {
   title: string;
   bullets: string;
+  description: string | null;
 }
 
-// This app has no login system, so "one rewrite per visitor" is
-// tracked in the browser's own storage rather than a real account.
-// It's a friendly cap for a public demo, not a hard security wall.
-const DEMO_LIMIT_KEY = "catalog-auditor:demo-rewrite-used";
-
 export function RewriteModal({ listing, onClose }: RewriteModalProps) {
-  const [loading, setLoading] = useState(true);
+  const { updateListing } = useAppData();
+  const cached = listing.aiRewriteTitle
+    ? {
+        title: listing.aiRewriteTitle,
+        bullets: listing.aiRewriteBullets ?? "",
+        description: listing.aiRewriteDescription,
+      }
+    : null;
+
+  const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<RewriteResult | null>(null);
+  const [result, setResult] = useState<RewriteResult | null>(cached);
   const [limitReached, setLimitReached] = useState(false);
   const [copied, setCopied] =
-    useState<"title" | "bullets" | null>(null);
-  const mountedRef = useRef(true);
+    useState<"title" | "bullets" | "description" | null>(null);
+
+  // A plain incrementing counter, not a mounted/unmounted boolean —
+  // React StrictMode deliberately mounts effects twice in dev, and a
+  // boolean flag gets flipped back to "active" by the second mount
+  // before the first request resolves, so both requests apply their
+  // results (double AI spend for one click). Each effect run gets
+  // its own id; a request only applies if it's still the latest one.
+  const requestIdRef = useRef(0);
 
   async function generate() {
-    if (
-      typeof window !== "undefined" &&
-      localStorage.getItem(DEMO_LIMIT_KEY)
-    ) {
+    const requestId = ++requestIdRef.current;
+
+    if (!hasAiActionsRemaining()) {
       setLimitReached(true);
       setLoading(false);
       return;
@@ -58,12 +74,21 @@ export function RewriteModal({ listing, onClose }: RewriteModalProps) {
         throw new Error(data.error || "Something went wrong.");
       }
 
-      if (mountedRef.current) {
-        setResult({ title: data.title, bullets: data.bullets });
-        localStorage.setItem(DEMO_LIMIT_KEY, "true");
+      if (requestIdRef.current === requestId) {
+        setResult({
+          title: data.title,
+          bullets: data.bullets,
+          description: data.description ?? null,
+        });
+        recordAiAction();
+        updateListing(listing.id, {
+          aiRewriteTitle: data.title,
+          aiRewriteBullets: data.bullets,
+          aiRewriteDescription: data.description ?? null,
+        });
       }
     } catch (err) {
-      if (mountedRef.current) {
+      if (requestIdRef.current === requestId) {
         setError(
           err instanceof Error
             ? err.message
@@ -71,20 +96,24 @@ export function RewriteModal({ listing, onClose }: RewriteModalProps) {
         );
       }
     } finally {
-      if (mountedRef.current) setLoading(false);
+      if (requestIdRef.current === requestId) setLoading(false);
     }
   }
 
   useEffect(() => {
-    mountedRef.current = true;
-    generate();
-    return () => {
-      mountedRef.current = false;
-    };
+    if (!cached) {
+      // generate() fetches from the AI route; the setState calls it
+      // makes all happen after that await, not synchronously here.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      generate();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listing.sku]);
+  }, [listing.id]);
 
-  function handleCopy(field: "title" | "bullets", text: string) {
+  function handleCopy(
+    field: "title" | "bullets" | "description",
+    text: string
+  ) {
     navigator.clipboard.writeText(text);
     setCopied(field);
     setTimeout(() => setCopied(null), 1500);
@@ -133,9 +162,9 @@ export function RewriteModal({ listing, onClose }: RewriteModalProps) {
                 className="text-sm"
                 style={{ color: "var(--warning)" }}
               >
-                This is a demo version, limited to one AI rewrite
-                per visitor — thanks for trying it out! Feel free
-                to explore everything else in the tool.
+                This is a demo version, limited to a handful of AI
+                actions per visitor — thanks for trying it out! Feel
+                free to explore everything else in the tool.
               </p>
             </div>
           )}
@@ -246,13 +275,48 @@ export function RewriteModal({ listing, onClose }: RewriteModalProps) {
                 </div>
               </div>
 
+              {/* Description — only shown when the AI generated one
+                  (i.e. the listing had none to begin with) */}
+              {result.description && (
+                <div>
+                  <p className="mono-label text-text-muted mb-2">
+                    Description{" "}
+                    <span className="normal-case font-normal">
+                      (was missing — AI generated one)
+                    </span>
+                  </p>
+                  <div
+                    className="text-sm px-3 py-2 rounded-lg
+                      border whitespace-pre-line flex
+                      items-start justify-between gap-3"
+                    style={{
+                      borderColor: "var(--accent)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <span>{result.description}</span>
+                    <button
+                      onClick={() =>
+                        handleCopy("description", result.description!)
+                      }
+                      className="text-xs shrink-0 px-2 py-1
+                        rounded-md hover:text-accent"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {copied === "description" ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <p
                 className="text-xs"
                 style={{ color: "var(--text-muted)" }}
               >
-                This is a suggestion only — nothing in your
-                catalog has been changed. Copy what you want
-                to use.
+                This is a suggestion only — nothing in your catalog
+                data has changed. It&apos;s saved to this session so
+                you can revisit it without spending another AI
+                action. Copy what you want to use.
               </p>
             </div>
           )}

@@ -20,9 +20,15 @@ Rather than just describe that I understand catalog quality problems, this tool 
 - **Smart column auto-mapping** — reads real-world marketplace files where columns are never named what you'd expect (`name` instead of `title`, `brandName` instead of `brand`), using a word-aware matching system rather than naive text search
 - **Manual mapping confirmation** — every upload shows an editable, pre-filled mapping screen before the audit runs, the same pattern professional import tools (Shopify, Mailchimp) use
 - **Missing field detection** — flags listings missing required data: title, bullet points, images, category
-- **Duplicate detection** — a two-tier system that catches both exact duplicates (80%+ similarity) and possible duplicates worth a second look (50–79%), with a similarity score and source SKU reference
+- **Duplicate detection** — a two-tier system that catches both exact duplicates (80%+ similarity) and possible duplicates worth a second look (50–79%), with a similarity score and source SKU reference; aware of Amazon-style parent/child variation families so legitimate size/color variants aren't flagged as duplicates
 - **SEO quality scoring (0–100)** — rule-based, so scores are instant, free, and 100% consistent
 - **AI rewrite suggestions** — generates an improved title and bullet points for low-scoring listings, shown side-by-side with the original (never auto-applied)
+- **Bulk AI rewrite** — queues every flagged listing at once instead of one at a time, respecting the same per-visitor AI budget
+- **Generate listing from a product URL** — paste a manufacturer/source page link and get an AI-drafted title, bullets, and description grounded in that page's real content; fetching is SSRF-guarded (blocks localhost/private-IP targets, including DNS-rebinding attempts) and every output is checked for verbatim overlap with the source so rewrites can't accidentally lift original wording
+- **Compliance risk scanner** — flags marketplace-policy-risk language (unsubstantiated health claims, guarantee language, embedded contact info/URLs, restricted-category wording) before a listing goes live
+- **AI duplicate verdict** — for borderline duplicate pairs, asks the model to call it: same listing duplicated, a legitimate size/color variant, or genuinely different products
+- **AI executive summary** — a stakeholder-ready, plain-English writeup of an audit run, referencing real SKUs and numbers
+- **Per-visitor AI usage budget** — every AI feature draws from one shared, browser-local cap so a public demo visitor can't run up unlimited API calls
 - **Prioritized fix list** — sorted by risk level, then issue count, mirroring real marketplace listing-quality workflows
 - **Sortable, searchable dashboard** with risk filters
 - **Report history** — last 10 audit runs saved automatically
@@ -34,16 +40,16 @@ Rather than just describe that I understand catalog quality problems, this tool 
 
 ## Tech Stack
 
-- **Next.js 14** (App Router) — web framework
+- **Next.js 16** (App Router, Turbopack) — web framework
 - **TypeScript** — programming language
 - **Tailwind CSS** — styling
-- **IBM Plex Sans + IBM Plex Mono** — self-hosted type pair via `next/font`
+- **Geist + Geist Mono** — self-hosted type pair via `next/font`
 - **papaparse** — CSV/TSV parsing
 - **SheetJS (xlsx)** — Excel parsing and export
 - **jsPDF + jspdf-autotable** — PDF export
 - **React Context** — app state management (no external state library)
 - **Browser storage (localStorage)** — report history, no database for the MVP
-- **AI rewrite panel** — provider is configurable, not hardcoded: Claude Haiku for local development/testing, Groq (Llama 3.3 70B) on the public deployment, chosen so a public demo can't run up a real API bill
+- **AI features** (rewrite, bulk rewrite, generate-from-link, compliance scan, duplicate verdict, executive summary) — one shared provider switch, not hardcoded: Claude Haiku for local development/testing, Groq (Llama 3.3 70B) on the public deployment, chosen so a public demo can't run up a real API bill
 - **Deployed on Vercel**, connected to this GitHub repo for automatic deploys
 
 ## How Decisions Were Made
@@ -55,6 +61,8 @@ A few choices are worth explaining, because they were deliberate trade-offs, not
 - **A confirmation step on every upload, not just when detection fails.** Auto-detection is a convenience, not a guarantee — showing a human-editable mapping every time (pre-filled with the best guess) catches errors before they silently corrupt a report.
 - **AI provider is configurable, not hardcoded to one vendor.** Locally, it uses Claude for testing and comparison. The public deployment uses Groq instead — a free-tier provider — specifically so a stranger clicking around the live demo can't run up a real bill. Same code, different environment settings.
 - **Two-tier duplicate detection instead of one threshold.** A single similarity cutoff forces a bad trade-off: too strict misses real duplicates, too loose floods the list with false positives. Splitting it into "hard duplicate" (80%+) and "possible duplicate" (50–79%, flagged but not asserted) avoids crying wolf while still surfacing borderline cases for a human to judge.
+- **A shared AI usage budget instead of a login wall.** The public demo needed some abuse protection without forcing a sign-up flow just to try the tool. A single per-visitor, browser-local budget shared across every AI feature (rewrite, bulk rewrite, compliance scan, duplicate verdict, executive summary) stops one visitor from running up real API cost, without adding an account system this project doesn't otherwise need.
+- **SSRF-guarded scraping for the "generate from link" feature.** Fetching an arbitrary user-submitted URL server-side is a classic SSRF vector. The fetch validates protocol, blocks local/internal hostnames, resolves DNS and rejects private-IP results (including on each redirect hop, since a public hostname can still redirect to an internal address), and caps response size and redirect count.
 - **No database for the MVP.** localStorage plus React Context proved the concept end-to-end without the overhead of hosting a database — a "come back to later" decision, not a permanent one.
 
 ## Roadmap

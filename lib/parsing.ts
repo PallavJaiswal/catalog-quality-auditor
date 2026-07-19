@@ -140,6 +140,8 @@ export function applyMapping(
       brand:       (row[mapping.brand]       ?? "").trim(),
       image_count: String(imageCount),
       price:       (row[mapping.price]       ?? "").trim(),
+      parent_sku:  (row[mapping.parent_sku]  ?? "").trim(),
+      product_url: (row[mapping.product_url] ?? "").trim(),
     };
   });
 }
@@ -235,8 +237,9 @@ export function guessMapping(headers: string[]): ColumnMapping {
       "description", "desc", "about", "summary",
     ]),
     category: find(headers, [
-      "category", "breadcrumbs", "breadcrumb", "product type",
-      "department", "node name",
+      "category", "breadcrumbs", "breadcrumb",
+      "item type keyword", "product type keyword", "item type",
+      "product type", "department", "node name",
     ]),
     brand: find(headers, [
       "brand", "brand name", "manufacturer", "vendor", "maker",
@@ -245,9 +248,37 @@ export function guessMapping(headers: string[]): ColumnMapping {
       "image", "images", "photo", "photos", "img", "picture",
       "gallery",
     ]),
+    // "standard/sale/selling/current price" are what the item
+    // actually sells for — ranked above "list price" on purpose,
+    // since marketplace flat files (Amazon in particular) use
+    // "list_price" for the strike-through "was" price, not the
+    // real selling price. Matching it first would silently audit
+    // the wrong number for every listing.
     price: find(headers, [
-      "price", "listed price", "sale price", "cost", "msrp",
-      "unit price", "list price",
+      "standard price", "selling price", "sale price",
+      "current price", "unit price", "price", "cost", "msrp",
+      "listed price", "list price",
+    ]),
+    // Optional — only present in files with a parent/child
+    // variation model (e.g. Amazon flat files). Blank when the
+    // file has no such column, which is the common case. Deliberately
+    // doesn't match a bare "parent" — that would also catch
+    // "parent_child" (Amazon's Parent/Child *role* indicator, not
+    // a SKU) and poison every row with the same non-SKU value.
+    parent_sku: find(headers, [
+      "parent sku", "parent asin", "parent id",
+    ]),
+    // Optional — a link to the product's page on the manufacturer's
+    // site or elsewhere, used to generate copy grounded in the real
+    // page instead of from scratch. Deliberately requires a second
+    // word alongside "url"/"link" — a bare "url" or "link" candidate
+    // would also match "main_image_url" / "other_image_url1" and
+    // silently steal an image column instead.
+    product_url: find(headers, [
+      "product url", "product link", "manufacturer url",
+      "manufacturer link", "landing page", "source url",
+      "reference url", "external url", "brand url",
+      "detail page url",
     ]),
   };
 }

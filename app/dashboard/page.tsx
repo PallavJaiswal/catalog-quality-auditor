@@ -2,15 +2,21 @@
 
 import { exportAuditToExcel } from "@/lib/exportExcel";
 import { exportAuditToPdf } from "@/lib/exportPdf";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppData } from "@/lib/store";
 import { KpiCard } from "@/components/KpiCard";
 import { FixListTable } from "@/components/FixListTable";
+import { BulkRewriteModal } from "@/components/BulkRewriteModal";
+import { SummaryModal } from "@/components/SummaryModal";
+
+const REWRITE_SCORE_THRESHOLD = 70;
 
 export default function DashboardPage() {
   const router = useRouter();
   const { auditResult } = useAppData();
+  const [showBulkRewrite, setShowBulkRewrite] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
 
   // If no audit result exists, send back to upload
   useEffect(() => {
@@ -18,6 +24,15 @@ export default function DashboardPage() {
       router.push("/upload");
     }
   }, [auditResult, router]);
+
+  const rewriteCandidates = useMemo(() => {
+    if (!auditResult) return [];
+    return auditResult.listings.filter(
+      (l) =>
+        !l.aiRewriteTitle &&
+        (l.seoScore === null || l.seoScore < REWRITE_SCORE_THRESHOLD)
+    );
+  }, [auditResult]);
 
   if (!auditResult) return null;
 
@@ -104,6 +119,7 @@ export default function DashboardPage() {
           label="Total Listings"
           value={String(auditResult.totalListings)}
           accent="default"
+          icon="listings"
         />
         <KpiCard
           label="With Issues"
@@ -113,6 +129,7 @@ export default function DashboardPage() {
               ? "warning"
               : "positive"
           }
+          icon="issues"
         />
         <KpiCard
           label="Duplicates Found"
@@ -122,9 +139,11 @@ export default function DashboardPage() {
               ? "negative"
               : "positive"
           }
+          icon="duplicates"
         />
         <KpiCard
           label="Avg SEO Score"
+          icon="seo"
           value={
             auditResult.averageSeoScore !== null
               ? `${auditResult.averageSeoScore}/100`
@@ -139,8 +158,51 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* AI tools */}
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <button
+          onClick={() => setShowBulkRewrite(true)}
+          disabled={rewriteCandidates.length === 0}
+          className="flex items-center gap-2 px-4 py-2
+            rounded-lg border border-hairline text-sm
+            font-medium text-text-primary
+            hover:border-accent hover:text-accent
+            transition-colors disabled:opacity-40
+            disabled:cursor-not-allowed"
+        >
+          ✨ Bulk Rewrite
+          {rewriteCandidates.length > 0 &&
+            ` (${rewriteCandidates.length} flagged)`}
+        </button>
+
+        <button
+          onClick={() => setShowSummary(true)}
+          className="flex items-center gap-2 px-4 py-2
+            rounded-lg border border-hairline text-sm
+            font-medium text-text-primary
+            hover:border-accent hover:text-accent
+            transition-colors"
+        >
+          🧭 AI Executive Summary
+        </button>
+      </div>
+
       {/* Fix list table */}
       <FixListTable listings={auditResult.listings} />
+
+      {showBulkRewrite && (
+        <BulkRewriteModal
+          candidates={rewriteCandidates}
+          onClose={() => setShowBulkRewrite(false)}
+        />
+      )}
+
+      {showSummary && (
+        <SummaryModal
+          auditResult={auditResult}
+          onClose={() => setShowSummary(false)}
+        />
+      )}
 
     </div>
   );

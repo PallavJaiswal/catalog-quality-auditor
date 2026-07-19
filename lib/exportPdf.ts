@@ -12,7 +12,9 @@ const MARGIN_X = 40;
 // fewer, more essential columns (see note above).
 function toPdfRow(l: AuditedListing): (string | number)[] {
   let duplicateInfo = "—";
-  if (l.isDuplicate) {
+  if (l.skuCollision) {
+    duplicateInfo = "SKU reused by another row";
+  } else if (l.isDuplicate) {
     duplicateInfo = `Duplicate of ${l.duplicateOf}`;
   } else if (l.possibleDuplicate) {
     duplicateInfo =
@@ -149,7 +151,7 @@ export function exportAuditToPdf(result: AuditResult) {
 
   // ── Duplicates Only ───────────────────────────────────────
   const duplicates = sorted.filter(
-    (l) => l.isDuplicate || l.possibleDuplicate
+    (l) => l.skuCollision || l.isDuplicate || l.possibleDuplicate
   );
   if (duplicates.length > 0) {
     addTableSection(doc, "Duplicates", duplicates.map(toPdfRow));

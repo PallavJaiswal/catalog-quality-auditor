@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 import type { AuditedListing } from "@/lib/types";
 import { RewriteModal } from "@/components/RewriteModal";
+import { ComplianceModal } from "@/components/ComplianceModal";
+import { DuplicateVerdictButton } from "@/components/DuplicateVerdictButton";
+import { GenerateFromLinkModal } from "@/components/GenerateFromLinkModal";
 
 interface FixListTableProps {
   listings: AuditedListing[];
@@ -23,6 +26,10 @@ export function FixListTable({ listings }: FixListTableProps) {
   const [sortDirection, setSortDirection] =
     useState<"asc" | "desc">("asc");
   const [rewriteTarget, setRewriteTarget] =
+    useState<AuditedListing | null>(null);
+  const [linkTarget, setLinkTarget] =
+    useState<AuditedListing | null>(null);
+  const [complianceTarget, setComplianceTarget] =
     useState<AuditedListing | null>(null);
 
   function handleSort(column: SortColumn) {
@@ -191,12 +198,24 @@ export function FixListTable({ listings }: FixListTableProps) {
               >
                 Rewrite
               </th>
+              <th
+                className="px-4 py-3 text-left mono-label
+                  text-text-muted whitespace-nowrap"
+              >
+                Policy
+              </th>
+              <th
+                className="px-4 py-3 text-left mono-label
+                  text-text-muted whitespace-nowrap"
+              >
+                Source Link
+              </th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((listing) => (
               <tr
-                key={listing.sku}
+                key={listing.id}
                 className="border-b border-hairline
                   hover:bg-panel-raised transition-colors"
               >
@@ -324,7 +343,29 @@ export function FixListTable({ listings }: FixListTableProps) {
 
                 {/* Duplicate */}
                 <td className="px-4 py-3">
-                  {listing.isDuplicate ? (
+                  {listing.skuCollision ? (
+                    <div>
+                      <span
+                        className="text-xs px-2 py-0.5
+                          rounded-full font-medium"
+                        style={{
+                          backgroundColor:
+                            "rgba(248,81,73,0.18)",
+                          color: "var(--negative)",
+                        }}
+                      >
+                        ⛔ Duplicate SKU
+                      </span>
+                      <p
+                        className="text-xs mt-1"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        Another row reuses this exact SKU —
+                        the marketplace will silently overwrite
+                        one of them.
+                      </p>
+                    </div>
+                  ) : listing.isDuplicate ? (
                     <div>
                       <span
                         className="text-xs px-2 py-0.5
@@ -381,6 +422,12 @@ export function FixListTable({ listings }: FixListTableProps) {
                           {listing.similarityScore}% similar
                         </p>
                       )}
+                      <DuplicateVerdictButton
+                        listing={listing}
+                        comparedTo={listings.find(
+                          (l) => l.sku === listing.possibleDuplicateOf
+                        )}
+                      />
                     </div>
                   ) : (
                     <span
@@ -414,13 +461,81 @@ export function FixListTable({ listings }: FixListTableProps) {
                     </span>
                   )}
                 </td>
+
+                {/* Policy */}
+                <td className="px-4 py-3">
+                  {listing.policyRisk ? (
+                    listing.policyRisk.flags.length === 0 ? (
+                      <span
+                        className="text-xs"
+                        style={{ color: "var(--positive)" }}
+                      >
+                        ✓ Clean
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setComplianceTarget(listing)}
+                        className="text-xs px-2 py-0.5 rounded-full
+                          font-medium"
+                        style={{
+                          backgroundColor:
+                            listing.policyRisk.flags.some(
+                              (f) => f.severity === "high"
+                            )
+                              ? "rgba(248,81,73,0.18)"
+                              : "rgba(227,179,65,0.15)",
+                          color: listing.policyRisk.flags.some(
+                            (f) => f.severity === "high"
+                          )
+                            ? "var(--negative)"
+                            : "var(--warning)",
+                        }}
+                      >
+                        ⚠ {listing.policyRisk.flags.length} risk
+                        {listing.policyRisk.flags.length > 1 ? "s" : ""}
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      onClick={() => setComplianceTarget(listing)}
+                      className="text-xs px-3 py-1.5 rounded-lg
+                        border border-hairline whitespace-nowrap
+                        text-text-primary hover:border-accent
+                        hover:text-accent transition-colors"
+                    >
+                      🛡 Scan
+                    </button>
+                  )}
+                </td>
+
+                {/* Source Link */}
+                <td className="px-4 py-3">
+                  {listing.productUrl ? (
+                    <button
+                      onClick={() => setLinkTarget(listing)}
+                      className="text-xs px-3 py-1.5 rounded-lg
+                        border border-hairline whitespace-nowrap
+                        text-text-primary hover:border-accent
+                        hover:text-accent transition-colors"
+                    >
+                      🔗 Generate
+                    </button>
+                  ) : (
+                    <span
+                      className="text-xs"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      —
+                    </span>
+                  )}
+                </td>
               </tr>
             ))}
 
             {sorted.length === 0 && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={9}
                   className="px-4 py-12 text-center
                     text-text-muted text-sm"
                 >
@@ -436,6 +551,20 @@ export function FixListTable({ listings }: FixListTableProps) {
         <RewriteModal
           listing={rewriteTarget}
           onClose={() => setRewriteTarget(null)}
+        />
+      )}
+
+      {complianceTarget && (
+        <ComplianceModal
+          listing={complianceTarget}
+          onClose={() => setComplianceTarget(null)}
+        />
+      )}
+
+      {linkTarget && (
+        <GenerateFromLinkModal
+          listing={linkTarget}
+          onClose={() => setLinkTarget(null)}
         />
       )}
     </div>
