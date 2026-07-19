@@ -46,7 +46,7 @@ export default function DashboardPage() {
             <p className="mono-label text-accent mb-1">
             Audit Complete
             </p>
-            <h1 className="text-xl font-semibold text-text-primary">
+            <h1 className="page-title text-text-primary">
             {auditResult.filename}
             </h1>
             <p className="text-text-muted text-sm mt-1">

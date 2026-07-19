@@ -99,7 +99,7 @@ export function FixListTable({ listings }: FixListTableProps) {
           justify-between gap-3"
       >
         <div>
-          <h2 className="font-semibold text-sm text-text-primary">
+          <h2 className="section-title text-text-primary">
             Fix List
           </h2>
           <p className="text-text-muted text-xs mt-0.5">
@@ -297,7 +297,7 @@ export function FixListTable({ listings }: FixListTableProps) {
                         />
                       </div>
                       <span
-                        className="text-xs font-mono"
+                        className="stat-value text-xs font-mono"
                         style={{
                           color:
                             listing.seoScore >= 70

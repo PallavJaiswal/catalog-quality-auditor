@@ -105,7 +105,7 @@ export default function UploadPage() {
           <p className="mono-label text-accent mb-1">
             Step 1 of 1
           </p>
-          <h1 className="text-xl font-semibold text-text-primary">
+          <h1 className="page-title text-text-primary">
             Upload your catalog file
           </h1>
           <p className="text-text-muted text-sm mt-1">

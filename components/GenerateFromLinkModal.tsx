@@ -110,7 +110,7 @@ export function GenerateFromLinkModal({
             flex items-center justify-between"
         >
           <div>
-            <h3 className="font-semibold text-sm text-text-primary">
+            <h3 className="section-title text-text-primary">
               Generate from Product Link
             </h3>
             <p className="text-text-muted text-xs mt-0.5 font-mono">

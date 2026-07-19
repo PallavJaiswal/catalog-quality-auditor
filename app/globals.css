@@ -78,6 +78,27 @@ h1, h2, h3 {
   letter-spacing: -0.01em;
 }
 
+/* One type scale for the whole app, used instead of picking a
+   Tailwind text-* size ad hoc per component. Three tiers:
+   page title (once per screen) → section/modal title (a Fix List,
+   a dialog heading) → everything else stays plain text-sm/text-xs.
+   Numbers get tabular-nums so digits don't shift width as they
+   change (a KPI updating, a sortable score column). */
+.page-title {
+  font-size: 1.5rem;      /* 24px */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.section-title {
+  font-size: 1rem;        /* 16px */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.stat-value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
 /* Thin scrollbars — keeps the instrument-panel feel clean */
 ::-webkit-scrollbar       { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

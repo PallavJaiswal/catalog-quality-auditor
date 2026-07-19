@@ -62,7 +62,7 @@ export function KpiCard({ label, value, accent, icon }: KpiCardProps) {
       <div className="flex flex-col gap-1">
         <p className="mono-label text-text-muted">{label}</p>
         <p
-          className="text-3xl font-semibold tracking-tight"
+          className="stat-value text-4xl font-semibold"
           style={{ color: accentColor }}
         >
           {value}

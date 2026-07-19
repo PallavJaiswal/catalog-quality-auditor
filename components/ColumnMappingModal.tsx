@@ -104,7 +104,7 @@ export function ColumnMappingModal({
       >
         {/* Header */}
         <div className="px-5 py-4 border-b border-hairline">
-          <h3 className="font-semibold text-sm text-text-primary">
+          <h3 className="section-title text-text-primary">
             Confirm Column Mapping
           </h3>
           <p className="text-text-muted text-xs mt-1">

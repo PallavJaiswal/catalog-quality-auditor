@@ -44,8 +44,7 @@ export default function ReportsPage() {
           <p className="mono-label text-accent mb-1">
             Report History
           </p>
-          <h1 className="text-xl font-semibold
-            text-text-primary">
+          <h1 className="page-title text-text-primary">
             Past Audits
           </h1>
           <p className="text-text-muted text-sm mt-1">
@@ -167,18 +166,17 @@ export default function ReportsPage() {
               {/* Stats */}
               <div className="flex items-center gap-6">
                 <div className="text-center">
-                  <p className="font-semibold text-sm
+                  <p className="stat-value font-semibold text-sm
                     text-text-primary">
                     {report.totalListings}
                   </p>
-                  <p className="mono-label text-text-muted
-                    text-[10px]">
+                  <p className="mono-label text-text-muted">
                     Listings
                   </p>
                 </div>
                 <div className="text-center">
                   <p
-                    className="font-semibold text-sm"
+                    className="stat-value font-semibold text-sm"
                     style={{
                       color:
                         report.missingFieldsCount > 0
@@ -188,14 +186,13 @@ export default function ReportsPage() {
                   >
                     {report.missingFieldsCount}
                   </p>
-                  <p className="mono-label text-text-muted
-                    text-[10px]">
+                  <p className="mono-label text-text-muted">
                     Issues
                   </p>
                 </div>
                 <div className="text-center">
                   <p
-                    className="font-semibold text-sm"
+                    className="stat-value font-semibold text-sm"
                     style={{
                       color:
                         report.duplicatesCount > 0
@@ -205,14 +202,13 @@ export default function ReportsPage() {
                   >
                     {report.duplicatesCount}
                   </p>
-                  <p className="mono-label text-text-muted
-                    text-[10px]">
+                  <p className="mono-label text-text-muted">
                     Duplicates
                   </p>
                 </div>
                 <div className="text-center">
                   <p
-                    className="font-semibold text-sm"
+                    className="stat-value font-semibold text-sm"
                     style={{
                       color:
                         report.averageSeoScore !== null &&
@@ -223,8 +219,7 @@ export default function ReportsPage() {
                   >
                     {report.averageSeoScore ?? "—"}
                   </p>
-                  <p className="mono-label text-text-muted
-                    text-[10px]">
+                  <p className="mono-label text-text-muted">
                     Avg Score
                   </p>
                 </div>
