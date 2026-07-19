@@ -106,8 +106,8 @@ h1, h2, h3 {
 
 /* Utility classes we'll use throughout the app */
 .mono-label {
-  font-family:     var(--font-mono, ui-monospace), monospace;
   font-size:       0.7rem;
+  font-weight:     600;
   letter-spacing:  0.08em;
   text-transform:  uppercase;
   font-variant-numeric: tabular-nums;

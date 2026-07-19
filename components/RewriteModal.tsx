@@ -135,7 +135,7 @@ export function RewriteModal({ listing, onClose }: RewriteModalProps) {
             <h3 className="section-title text-text-primary">
               AI Rewrite Suggestion
             </h3>
-            <p className="text-text-muted text-xs mt-0.5 font-mono">
+            <p className="text-text-muted text-xs mt-0.5">
               {listing.sku}
             </p>
           </div>

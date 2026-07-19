@@ -152,7 +152,7 @@ export default function UploadPage() {
                       <div
                         className="w-6 h-6 rounded-full flex
                           items-center justify-center shrink-0
-                          text-xs font-mono transition-all"
+                          text-xs font-semibold transition-all"
                         style={{
                           backgroundColor: isDone
                             ? "var(--positive)"

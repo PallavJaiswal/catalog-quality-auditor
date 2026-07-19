@@ -220,7 +220,7 @@ export function FixListTable({ listings }: FixListTableProps) {
                   hover:bg-panel-raised transition-colors"
               >
                 {/* SKU */}
-                <td className="px-4 py-3 font-mono text-xs
+                <td className="px-4 py-3 font-medium text-xs
                   text-text-primary whitespace-nowrap">
                   {listing.sku}
                 </td>
@@ -297,7 +297,7 @@ export function FixListTable({ listings }: FixListTableProps) {
                         />
                       </div>
                       <span
-                        className="stat-value text-xs font-mono"
+                        className="stat-value text-xs font-medium"
                         style={{
                           color:
                             listing.seoScore >= 70

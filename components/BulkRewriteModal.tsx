@@ -229,7 +229,7 @@ export function BulkRewriteModal({
                     style={{ backgroundColor: "var(--panel-raised)" }}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-mono text-text-primary">
+                      <span className="text-xs font-medium text-text-primary">
                         {item.listing.sku}
                       </span>
                       <StatusBadge status={item.status} />

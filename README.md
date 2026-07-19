@@ -43,7 +43,7 @@ Rather than just describe that I understand catalog quality problems, this tool 
 - **Next.js 16** (App Router, Turbopack) — web framework
 - **TypeScript** — programming language
 - **Tailwind CSS** — styling
-- **Plus Jakarta Sans + Geist Mono** — self-hosted type pair via `next/font`, one consistent type scale (page title / section title / body / mono-label) applied across every screen
+- **Plus Jakarta Sans** — one self-hosted typeface for the entire app via `next/font` (no second monospace font mixed in for labels/codes), with hierarchy from a consistent type scale (page title / section title / body / micro-label) instead of switching families
 - **papaparse** — CSV/TSV parsing
 - **SheetJS (xlsx)** — Excel parsing and export
 - **jsPDF + jspdf-autotable** — PDF export
